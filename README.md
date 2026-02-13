@@ -6,7 +6,7 @@ Specification: see `SECRET.md` (not committed; add your copy locally).
 
 ## Architecture
 
-- **Redis consumer** (main worker): consumes from `APP_PUBLISHER_INPUT_STREAM` with consumer groups, runs controller + strategies, publishes to output streams / dead-letter / buffer / live service.
+- **Redis consumer** (main worker): consumes from `APP_DISPATCHER_INPUT_STREAM` with consumer groups, runs controller + strategies, dispatches to output streams / dead-letter / buffer / live service.
 - **HTTP API**: optional process serving `/health` and `/ready` on `0.0.0.0:8080` (or `PORT`).
 
 Both processes use the same configuration (environment variables).
@@ -22,22 +22,22 @@ go build -o bin/server  ./cmd/server
 
 ### Required environment variables (consumer)
 
-- `APP_PUBLISHER_INPUT_STREAM` – input stream name (e.g. `go_dispatcher:requests`)
-- `APP_PUBLISHER_CONSUMER_GROUP` – consumer group (e.g. `go_dispatcher`)
-- `APP_PUBLISHER_CONSUMER_NAME` – unique consumer name (e.g. hostname)
-- `APP_PUBLISHER_OUTPUT_STREAM_PREFIX` – output stream prefix (e.g. `go_dispatcher:out:`)
-- `APP_PUBLISHER_DEADLETTER_STREAM` – dead-letter stream (e.g. `go_dispatcher:deadletters`)
+- `APP_DISPATCHER_INPUT_STREAM` – input stream name (e.g. `go_dispatcher:requests`)
+- `APP_DISPATCHER_CONSUMER_GROUP` – consumer group (e.g. `go_dispatcher`)
+- `APP_DISPATCHER_CONSUMER_NAME` – unique consumer name (e.g. hostname)
+- `APP_DISPATCHER_OUTPUT_STREAM_PREFIX` – output stream prefix (e.g. `go_dispatcher:out:`)
+- `APP_DISPATCHER_REJECTED_STREAM` – dead-letter stream (e.g. `go_dispatcher:deadletters`)
 
 Redis host/port default to `APP_BACKEND_REDIS_SERVER` / `APP_BACKEND_REDIS_PORT` if `APP_REDIS_HOST` / `APP_REDIS_PORT` are unset.
 
 ### Consumer
 
 ```bash
-export APP_PUBLISHER_INPUT_STREAM=go_dispatcher:requests
-export APP_PUBLISHER_CONSUMER_GROUP=go_dispatcher
-export APP_PUBLISHER_CONSUMER_NAME=consumer1
-export APP_PUBLISHER_OUTPUT_STREAM_PREFIX=go_dispatcher:out:
-export APP_PUBLISHER_DEADLETTER_STREAM=go_dispatcher:deadletters
+export APP_DISPATCHER_INPUT_STREAM=go_dispatcher:requests
+export APP_DISPATCHER_CONSUMER_GROUP=go_dispatcher
+export APP_DISPATCHER_CONSUMER_NAME=consumer1
+export APP_DISPATCHER_OUTPUT_STREAM_PREFIX=go_dispatcher:out:
+export APP_DISPATCHER_REJECTED_STREAM=go_dispatcher:deadletters
 ./bin/consumer
 ```
 

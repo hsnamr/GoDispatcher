@@ -87,7 +87,7 @@ func (c *Controller) Run(ctx context.Context, params *models.EventData, senderQu
 	if strategy != nil {
 		return strategy.CallPageData(ctx, params, senderQueue)
 	}
-	// No strategy: push a minimal placeholder so publisher can ack and complete
+	// No strategy: push a minimal placeholder so dispatcher can ack and complete
 	item := &models.SenderQueueItem{
 		Data: &models.SenderQueueItemData{
 			Message: &models.OutgoingMessage{

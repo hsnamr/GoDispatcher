@@ -80,8 +80,8 @@ func (b *Broker) Ack(ctx context.Context, stream, group string, ids ...string) e
 // AddToStream adds an entry to a stream (e.g. output or dead-letter) with optional MAXLEN.
 func (b *Broker) AddToStream(ctx context.Context, stream string, values map[string]interface{}) (string, error) {
 	args := &redis.XAddArgs{Stream: stream, Values: values}
-	if b.cfg.PublisherStreamMaxLen > 0 {
-		args.MaxLenApprox = b.cfg.PublisherStreamMaxLen
+	if b.cfg.DispatcherStreamMaxLen > 0 {
+		args.MaxLenApprox = b.cfg.DispatcherStreamMaxLen
 	}
 	return b.Client.XAdd(ctx, args).Result()
 }
@@ -91,7 +91,7 @@ func (b *Broker) OutputStreamName(routingKey string) string {
 	if b.cfg.OverrideOutput && b.cfg.OverrideRoutingKey != "" {
 		routingKey = b.cfg.OverrideRoutingKey
 	}
-	return b.cfg.PublisherOutputStreamPrefix + routingKey
+	return b.cfg.DispatcherOutputStreamPrefix + routingKey
 }
 
 // Close closes the Redis connection.

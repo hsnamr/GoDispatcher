@@ -10,7 +10,7 @@ import (
 	"github.com/halamri/go-dispatcher/internal/config"
 	"github.com/halamri/go-dispatcher/internal/controller"
 	"github.com/halamri/go-dispatcher/internal/consumer"
-	"github.com/halamri/go-dispatcher/internal/publisher"
+	"github.com/halamri/go-dispatcher/internal/dispatcher"
 	"github.com/halamri/go-dispatcher/internal/redis"
 	"github.com/halamri/go-dispatcher/internal/strategies"
 )
@@ -46,7 +46,7 @@ func main() {
 	ctrl := controller.NewController(registry)
 
 	cons := consumer.NewConsumer(cfg, broker, backend, ctrl, slog.Default())
-	pubWorker := publisher.NewWorker(cfg, broker, backend, cons.SenderQueue(), slog.Default())
+	pubWorker := dispatcher.NewWorker(cfg, broker, backend, cons.SenderQueue(), slog.Default())
 
 	go pubWorker.Run(ctx)
 	go func() {

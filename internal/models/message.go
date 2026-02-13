@@ -68,12 +68,12 @@ type SenderQueueItem struct {
 	Data     *SenderQueueItemData   // required
 }
 
-// SenderQueueItemData holds the payload and routing for the publisher.
+// SenderQueueItemData holds the payload and routing for the dispatcher.
 type SenderQueueItemData struct {
 	Message    *OutgoingMessage     `json:"message"`
 	RoutingKey string               `json:"routing_key"`
 	Exchange   string               `json:"exchange,omitempty"`
-	// Dynamic publish flags (from spec 7.1)
+	// Dynamic dispatch flags (from spec 7.1)
 	ExporterID         string `json:"exporter_id,omitempty"`
 	AlertID            string `json:"alert_id,omitempty"`
 	StaciActive        bool   `json:"staci_active,omitempty"`

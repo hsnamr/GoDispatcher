@@ -1,4 +1,4 @@
-package publisher
+package dispatcher
 
 import (
 	"bytes"
@@ -14,7 +14,7 @@ import (
 	"github.com/halamri/go-dispatcher/internal/redis"
 )
 
-// Worker consumes from the sender queue and publishes to Redis streams, Redis buffer, or live service.
+// Worker consumes from the sender queue and dispatches to Redis streams, Redis buffer, or live service.
 type Worker struct {
 	cfg     *config.Config
 	broker  *redis.Broker
@@ -23,7 +23,7 @@ type Worker struct {
 	log     *slog.Logger
 }
 
-// NewWorker creates a publisher worker.
+// NewWorker creates a dispatcher worker.
 func NewWorker(cfg *config.Config, broker *redis.Broker, backend *redis.BackendRedis, queue <-chan *models.SenderQueueItem, logger *slog.Logger) *Worker {
 	if logger == nil {
 		logger = slog.Default()
@@ -31,7 +31,7 @@ func NewWorker(cfg *config.Config, broker *redis.Broker, backend *redis.BackendR
 	return &Worker{cfg: cfg, broker: broker, backend: backend, queue: queue, log: logger}
 }
 
-// Run runs the publisher loop until ctx is cancelled.
+// Run runs the dispatcher loop until ctx is cancelled.
 func (w *Worker) Run(ctx context.Context) {
 	for {
 		select {
@@ -84,13 +84,13 @@ func (w *Worker) handleItem(ctx context.Context, item *models.SenderQueueItem) {
 		return
 	}
 
-	// Default: publish to Redis output stream
-	w.publishToStream(ctx, routingKey, msg)
+	// Default: dispatch to Redis output stream
+	w.dispatchToStream(ctx, routingKey, msg)
 }
 
 func (w *Worker) sendSSEEvent(ctx context.Context, data *models.SenderQueueItemData) {
 	msg := data.Message
-	url := w.cfg.LiveServiceURL + "/publisher/event"
+	url := w.cfg.LiveServiceURL + "/dispatcher/event"
 	if w.cfg.LiveServiceURL == "" {
 		w.log.Warn("APP_LIVE_SERVICE_URL not set, skipping SSE send")
 		return
@@ -130,7 +130,7 @@ func (w *Worker) sendSSEEvent(ctx context.Context, data *models.SenderQueueItemD
 	}
 }
 
-func (w *Worker) publishToStream(ctx context.Context, routingKey string, msg *models.OutgoingMessage) {
+func (w *Worker) dispatchToStream(ctx context.Context, routingKey string, msg *models.OutgoingMessage) {
 	stream := w.broker.OutputStreamName(routingKey)
 	payload, err := json.Marshal(msg)
 	if err != nil {

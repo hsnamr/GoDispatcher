@@ -22,13 +22,13 @@ type Config struct {
 	BackendRedisHost string
 	BackendRedisPort string
 
-	PublisherInputStream        string
-	PublisherConsumerGroup      string
-	PublisherConsumerName       string
-	PublisherOutputStreamPrefix string
-	PublisherDeadletterStream   string
-	PublisherStreamMaxLen       int64
-	PublisherClaimMinIdle        time.Duration
+	DispatcherInputStream        string
+	DispatcherConsumerGroup      string
+	DispatcherConsumerName       string
+	DispatcherOutputStreamPrefix string
+	DispatcherDeadletterStream   string
+	DispatcherStreamMaxLen       int64
+	DispatcherClaimMinIdle        time.Duration
 
 	OverrideOutput      bool
 	OverrideRoutingKey  string
@@ -119,13 +119,13 @@ func Load() (*Config, error) {
 	c.BackendRedisHost = getEnv("APP_BACKEND_REDIS_SERVER", c.RedisHost)
 	c.BackendRedisPort = getEnv("APP_BACKEND_REDIS_PORT", c.RedisPort)
 
-	c.PublisherInputStream = os.Getenv("APP_PUBLISHER_INPUT_STREAM")
-	c.PublisherConsumerGroup = os.Getenv("APP_PUBLISHER_CONSUMER_GROUP")
-	c.PublisherConsumerName = os.Getenv("APP_PUBLISHER_CONSUMER_NAME")
-	c.PublisherOutputStreamPrefix = os.Getenv("APP_PUBLISHER_OUTPUT_STREAM_PREFIX")
-	c.PublisherDeadletterStream = os.Getenv("APP_PUBLISHER_DEADLETTER_STREAM")
-	c.PublisherStreamMaxLen = parseInt64(os.Getenv("APP_PUBLISHER_STREAM_MAXLEN"), 0)
-	c.PublisherClaimMinIdle = time.Duration(parseInt64(os.Getenv("APP_PUBLISHER_CLAIM_MIN_IDLE"), 300000)) * time.Millisecond
+	c.DispatcherInputStream = os.Getenv("APP_DISPATCHER_INPUT_STREAM")
+	c.DispatcherConsumerGroup = os.Getenv("APP_DISPATCHER_CONSUMER_GROUP")
+	c.DispatcherConsumerName = os.Getenv("APP_DISPATCHER_CONSUMER_NAME")
+	c.DispatcherOutputStreamPrefix = os.Getenv("APP_DISPATCHER_OUTPUT_STREAM_PREFIX")
+	c.DispatcherDeadletterStream = os.Getenv("APP_DISPATCHER_REJECTED_STREAM")
+	c.DispatcherStreamMaxLen = parseInt64(os.Getenv("APP_DISPATCHER_STREAM_MAXLEN"), 0)
+	c.DispatcherClaimMinIdle = time.Duration(parseInt64(os.Getenv("APP_DISPATCHER_CLAIM_MIN_IDLE"), 300000)) * time.Millisecond
 
 	c.OverrideOutput = parseBool(os.Getenv("APP_GO_DISPATCHER_OVERRIDE"))
 	c.OverrideRoutingKey = os.Getenv("APP_GO_DISPATCHER_OVERRIDE_ROUTING_KEY")
@@ -188,7 +188,7 @@ func Load() (*Config, error) {
 	c.WhitelabelAIProductPPTLogo = os.Getenv("APP_WHITELABEL_AI_PRODUCT_PPT_LOGO")
 
 	// Observability
-	c.OTELServiceName = getEnv("OTEL_SERVICE_NAME", "publisher-engine")
+	c.OTELServiceName = getEnv("OTEL_SERVICE_NAME", "dispatcher-engine")
 	c.OTELTracesExporter = os.Getenv("OTEL_TRACES_EXPORTER")
 	c.OTELMetricsExporter = os.Getenv("OTEL_METRICS_EXPORTER")
 	c.OTELLogsExporter = os.Getenv("OTEL_LOGS_EXPORTER")
@@ -202,20 +202,20 @@ func Load() (*Config, error) {
 }
 
 func (c *Config) validate() error {
-	if c.PublisherInputStream == "" {
-		return fmt.Errorf("APP_PUBLISHER_INPUT_STREAM is required")
+	if c.DispatcherInputStream == "" {
+		return fmt.Errorf("APP_DISPATCHER_INPUT_STREAM is required")
 	}
-	if c.PublisherConsumerGroup == "" {
-		return fmt.Errorf("APP_PUBLISHER_CONSUMER_GROUP is required")
+	if c.DispatcherConsumerGroup == "" {
+		return fmt.Errorf("APP_DISPATCHER_CONSUMER_GROUP is required")
 	}
-	if c.PublisherConsumerName == "" {
-		return fmt.Errorf("APP_PUBLISHER_CONSUMER_NAME is required")
+	if c.DispatcherConsumerName == "" {
+		return fmt.Errorf("APP_DISPATCHER_CONSUMER_NAME is required")
 	}
-	if c.PublisherOutputStreamPrefix == "" {
-		return fmt.Errorf("APP_PUBLISHER_OUTPUT_STREAM_PREFIX is required")
+	if c.DispatcherOutputStreamPrefix == "" {
+		return fmt.Errorf("APP_DISPATCHER_OUTPUT_STREAM_PREFIX is required")
 	}
-	if c.PublisherDeadletterStream == "" {
-		return fmt.Errorf("APP_PUBLISHER_DEADLETTER_STREAM is required")
+	if c.DispatcherDeadletterStream == "" {
+		return fmt.Errorf("APP_DISPATCHER_REJECTED_STREAM is required")
 	}
 	return nil
 }

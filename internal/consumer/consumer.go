@@ -9,7 +9,7 @@ import (
 	"github.com/halamri/go-dispatcher/internal/config"
 	"github.com/halamri/go-dispatcher/internal/controller"
 	"github.com/halamri/go-dispatcher/internal/models"
-	"github.com/halamri/go-dispatcher/internal/publisher"
+	"github.com/halamri/go-dispatcher/internal/dispatcher"
 	"github.com/halamri/go-dispatcher/internal/redis"
 )
 
@@ -18,7 +18,7 @@ const (
 	senderQueueCap = 1000
 )
 
-// Consumer consumes from Redis stream and dispatches to controller + publisher.
+// Consumer consumes from Redis stream and dispatches to controller + dispatcher.
 type Consumer struct {
 	cfg       *config.Config
 	broker    *redis.Broker
@@ -43,16 +43,16 @@ func NewConsumer(cfg *config.Config, broker *redis.Broker, backend *redis.Backen
 	}
 }
 
-// SenderQueue returns the channel the publisher worker should read from.
+// SenderQueue returns the channel the dispatcher worker should read from.
 func (c *Consumer) SenderQueue() chan *models.SenderQueueItem {
 	return c.senderCh
 }
 
 // Run starts the consumer loop. It creates the consumer group, then reads messages and processes them.
 func (c *Consumer) Run(ctx context.Context) error {
-	stream := c.cfg.PublisherInputStream
-	group := c.cfg.PublisherConsumerGroup
-	consumerName := c.cfg.PublisherConsumerName
+	stream := c.cfg.DispatcherInputStream
+	group := c.cfg.DispatcherConsumerGroup
+	consumerName := c.cfg.DispatcherConsumerName
 
 	if err := c.broker.EnsureConsumerGroup(ctx, stream, group, "$"); err != nil {
 		return err
@@ -134,9 +134,9 @@ func (c *Consumer) processMessage(ctx context.Context, stream, group, messageID 
 	}
 
 	// Special handling: fedi_listener_go_dispatcher with export_xlsx and timeout (spec 5.4)
-	const messagePublisherTimeoutSec = 7200
+	const messageDispatcherTimeoutSec = 7200
 	if eventName == "fedi_listener_go_dispatcher" && eventData.ExportXLSX && eventData.RequestTimestamp > 0 {
-		if time.Now().Unix()-eventData.RequestTimestamp > messagePublisherTimeoutSec {
+		if time.Now().Unix()-eventData.RequestTimestamp > messageDispatcherTimeoutSec {
 			c.deadLetter(ctx, stream, group, messageID, incoming, "export_xlsx_timeout")
 			return
 		}
@@ -188,7 +188,7 @@ func (c *Consumer) deadLetter(ctx context.Context, stream, group, messageID stri
 	if incoming.EventData != nil {
 		values["routing_key"] = incoming.EventData.RoutingKey
 	}
-	_, _ = c.broker.AddToStream(ctx, c.cfg.PublisherDeadletterStream, values)
+	_, _ = c.broker.AddToStream(ctx, c.cfg.DispatcherDeadletterStream, values)
 	c.broker.Ack(ctx, stream, group, messageID)
 }
 
