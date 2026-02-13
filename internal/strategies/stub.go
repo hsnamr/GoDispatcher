@@ -45,8 +45,8 @@ func RegisterStubStrategies(r *controller.Registry) {
 
 	pages := []string{
 		"CustomDashboard", "AccountPage", "EngagementsPage", "CustomerCarePage", "PostsPage",
-		"CommentsMentionsPage", "AuthorsPage", "QuestionsPage", "CAInteractionsPage", "CAInsightsPage",
-		"CAChatsPage", "CAChatsInteractionsPage", "CASingleDataSourceInsightsPage", "CASingleDataSourceInteractionsPage",
+		"CommentsMentionsPage", "AuthorsPage", "QuestionsPage", "ResearchInteractionsPage", "ResearchInsightsPage",
+		"ResearchChatsPage", "ResearchChatsInteractionsPage", "ResearchSingleDataSourceInsightsPage", "ResearchSingleDataSourceInteractionsPage",
 		"CDPProfileInteractionsPage", "SurveyPage", "SurveyIndividualQuestionsInsightsPage",
 		"EngagementAnalyticsPage", "EngagementsNotesPage", "EngagementsSingleInteractionDMHistoryPage",
 		"EngagementSurveyFeedbackPage", "SingleInteractionPage", "CsatQuestionsResponsesCountPage",

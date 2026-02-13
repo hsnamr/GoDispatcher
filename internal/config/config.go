@@ -141,9 +141,9 @@ func Load() (*Config, error) {
 	c.MongoDBOptions = os.Getenv("APP_MONGODB_OPTIONS")
 
 	// Cassandra
-	c.CassandraServer1 = os.Getenv("APP_CASSANDRA_SERVER_1")
-	c.CassandraServer2 = os.Getenv("APP_CASSANDRA_SERVER_2")
-	c.CassandraDefaultKeyspace = os.Getenv("APP_CASSANDRA_DEFAULT_KEYSPACE")
+	c.CassandraServer1 = os.Getenv("APP_ResearchSSANDRA_SERVER_1")
+	c.CassandraServer2 = os.Getenv("APP_ResearchSSANDRA_SERVER_2")
+	c.CassandraDefaultKeyspace = os.Getenv("APP_ResearchSSANDRA_DEFAULT_KEYSPACE")
 
 	// MinIO
 	c.MinIOEndpoint = os.Getenv("APP_MINIO_ENDPOINT")

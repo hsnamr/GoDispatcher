@@ -70,18 +70,18 @@ func EventToPageEnrichment(eventName string, eventData *EventData) {
 	}
 	switch eventName {
 	case "interactions":
-		eventData.PageName = "CAInteractionsPage"
+		eventData.PageName = "ResearchInteractionsPage"
 	case "insights":
-		eventData.PageName = "CAInsightsPage"
+		eventData.PageName = "ResearchInsightsPage"
 	case "chats_page_data":
-		eventData.PageName = "CAChatsPage"
+		eventData.PageName = "ResearchChatsPage"
 	case "chats_interactions":
-		eventData.PageName = "CAChatsInteractionsPage"
+		eventData.PageName = "ResearchChatsInteractionsPage"
 	case "fedi_private_data":
-		eventData.PageName = "CASingleDataSourceInsightsPage"
+		eventData.PageName = "ResearchSingleDataSourceInsightsPage"
 		eventData.DataSourceName = "Fediprivate"
 	case "fedi_private_interactions":
-		eventData.PageName = "CASingleDataSourceInteractionsPage"
+		eventData.PageName = "ResearchSingleDataSourceInteractionsPage"
 		eventData.DataSourceName = "Fediprivate"
 	case "aggregate_dashboard_go_dispatcher", "custom_dashboard_go_dispatcher":
 		eventData.Product = "Dashboards"
