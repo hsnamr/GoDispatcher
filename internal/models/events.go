@@ -110,11 +110,11 @@ func EventToPageEnrichment(eventName string, eventData *EventData) {
 	case "single_interaction_go_dispatcher":
 		eventData.PageName = "SingleInteractionPage"
 	case "csat_questions_responses_count":
-		eventData.PageName = "CsatQuestionsResponsesCountPage"
+		eventData.PageName = "FulfillmentQuestionsResponsesCountPage"
 	case "csat_question_responses":
-		eventData.PageName = "CsatQuestionResponsesPage"
+		eventData.PageName = "FulfillmentQuestionResponsesPage"
 	case "csat_user_responses":
-		eventData.PageName = "CsatUserResponsesPage"
+		eventData.PageName = "FulfillmentUserResponsesPage"
 	case "unified_json":
 		if eventData.PageName != "" {
 			if mapped, ok := UnifiedJSONPageMapping[eventData.PageName]; ok {
