@@ -35,7 +35,7 @@ Redis host/port default to `APP_BACKEND_REDIS_SERVER` / `APP_BACKEND_REDIS_PORT`
 ```bash
 export APP_DISPATCHER_INPUT_STREAM=go_dispatcher:requests
 export APP_DISPATCHER_CONSUMER_GROUP=go_dispatcher
-export APP_DISPATCHER_CONSUMER_NAME=consumer1
+export APP_DISPATCHER_CONSUMER_NAME=consumer0
 export APP_DISPATCHER_OUTPUT_STREAM_PREFIX=go_dispatcher:out:
 export APP_DISPATCHER_REJECTED_STREAM=go_dispatcher:deadletters
 ./bin/consumer
