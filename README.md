@@ -2,8 +2,6 @@
 
 Message-driven analytics and dashboard backend that consumes requests from Redis Streams, computes widget/page data (MongoDB, Cassandra, MinIO, HTTP APIs), and dispatches results via Redis Streams, Redis buffer (stream_tech API), or HTTP POST to a live/SSE service.
 
-Specification: see `SECRET.md` (not committed; add your copy locally).
-
 ## Architecture
 
 - **Redis consumer** (main worker): consumes from `APP_DISPATCHER_INPUT_STREAM` with consumer groups, runs controller + strategies, dispatches to output streams / dead-letter / buffer / live service.
