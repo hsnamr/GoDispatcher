@@ -14,13 +14,19 @@ import (
 	"github.com/halamri/go-dispatcher/internal/redis"
 )
 
-// Worker consumes from the sender queue and dispatches to Redis streams, Redis buffer, or live service.
+// KafkaOutputProducer writes outgoing messages to Kafka (staci.dispatcher.output).
+type KafkaOutputProducer interface {
+	ProduceOutput(ctx context.Context, routingKey string, payload []byte) error
+}
+
+// Worker consumes from the sender queue and dispatches to Redis streams, Kafka, Redis buffer, or live service.
 type Worker struct {
-	cfg     *config.Config
-	broker  *redis.Broker
-	backend *redis.BackendRedis
-	queue   <-chan *models.SenderQueueItem
-	log     *slog.Logger
+	cfg       *config.Config
+	broker    *redis.Broker
+	backend   *redis.BackendRedis
+	queue     <-chan *models.SenderQueueItem
+	log       *slog.Logger
+	kafkaOut  KafkaOutputProducer // optional; when set and UseKafka, dispatch to Kafka
 }
 
 // NewWorker creates a dispatcher worker.
@@ -29,6 +35,11 @@ func NewWorker(cfg *config.Config, broker *redis.Broker, backend *redis.BackendR
 		logger = slog.Default()
 	}
 	return &Worker{cfg: cfg, broker: broker, backend: backend, queue: queue, log: logger}
+}
+
+// SetKafkaOutput sets the optional Kafka producer for staci.dispatcher.output.
+func (w *Worker) SetKafkaOutput(p KafkaOutputProducer) {
+	w.kafkaOut = p
 }
 
 // Run runs the dispatcher loop until ctx is cancelled.
@@ -84,7 +95,18 @@ func (w *Worker) handleItem(ctx context.Context, item *models.SenderQueueItem) {
 		return
 	}
 
-	// Default: dispatch to Redis output stream
+	// Default: dispatch to Kafka (if set) or Redis output stream
+	if w.cfg.UseKafka() && w.kafkaOut != nil {
+		payload, err := json.Marshal(msg)
+		if err != nil {
+			w.log.Error("marshal message failed", "error", err)
+			return
+		}
+		if err := w.kafkaOut.ProduceOutput(ctx, routingKey, payload); err != nil {
+			w.log.Error("kafka produce failed", "routing_key", routingKey, "error", err)
+		}
+		return
+	}
 	w.dispatchToStream(ctx, routingKey, msg)
 }
 

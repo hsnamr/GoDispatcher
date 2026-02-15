@@ -9,7 +9,6 @@ import (
 	"github.com/halamri/go-dispatcher/internal/config"
 	"github.com/halamri/go-dispatcher/internal/controller"
 	"github.com/halamri/go-dispatcher/internal/models"
-	"github.com/halamri/go-dispatcher/internal/dispatcher"
 	"github.com/halamri/go-dispatcher/internal/redis"
 )
 
@@ -18,14 +17,20 @@ const (
 	senderQueueCap = 1000
 )
 
-// Consumer consumes from Redis stream and dispatches to controller + dispatcher.
+// CalcExportProducer sends export requests to the calc data_fetcher topic (e.g. Kafka).
+type CalcExportProducer interface {
+	SendDataFetcher(ctx context.Context, incoming *models.IncomingMessage) error
+}
+
+// Consumer consumes from Redis stream or Kafka and dispatches to controller + dispatcher.
 type Consumer struct {
-	cfg       *config.Config
-	broker    *redis.Broker
-	backend   *redis.BackendRedis
-	ctrl      *controller.Controller
-	senderCh  chan *models.SenderQueueItem
-	log       *slog.Logger
+	cfg               *config.Config
+	broker            *redis.Broker
+	backend           *redis.BackendRedis
+	ctrl              *controller.Controller
+	senderCh          chan *models.SenderQueueItem
+	log               *slog.Logger
+	calcExportProducer CalcExportProducer // optional; when set, export path produces to staci.calc.data_fetcher
 }
 
 // NewConsumer creates a consumer.
@@ -43,13 +48,22 @@ func NewConsumer(cfg *config.Config, broker *redis.Broker, backend *redis.Backen
 	}
 }
 
+// SetCalcExportProducer sets the optional producer for export path (staci.calc.data_fetcher).
+func (c *Consumer) SetCalcExportProducer(p CalcExportProducer) {
+	c.calcExportProducer = p
+}
+
 // SenderQueue returns the channel the dispatcher worker should read from.
 func (c *Consumer) SenderQueue() chan *models.SenderQueueItem {
 	return c.senderCh
 }
 
-// Run starts the consumer loop. It creates the consumer group, then reads messages and processes them.
+// Run starts the Redis consumer loop. It creates the consumer group, then reads messages and processes them.
+// Use Kafka consumer (RunConsumer) when cfg.UseKafka() is true.
 func (c *Consumer) Run(ctx context.Context) error {
+	if c.broker == nil {
+		return nil
+	}
 	stream := c.cfg.DispatcherInputStream
 	group := c.cfg.DispatcherConsumerGroup
 	consumerName := c.cfg.DispatcherConsumerName
@@ -91,29 +105,48 @@ func (c *Consumer) Run(ctx context.Context) error {
 			continue
 		}
 
-		c.processMessage(ctx, stream, group, messageID, &incoming)
+		ack, reason := c.ProcessMessage(ctx, &incoming)
+		if ack {
+			c.broker.Ack(ctx, stream, group, messageID)
+		} else {
+			c.deadLetter(ctx, stream, group, messageID, &incoming, reason)
+		}
 	}
 }
 
-func (c *Consumer) processMessage(ctx context.Context, stream, group, messageID string, incoming *models.IncomingMessage) {
+// ProcessMessage processes one incoming message. Returns (true, "") to ack, (false, reason) to deadLetter.
+// Used by both Redis and Kafka consumers.
+func (c *Consumer) ProcessMessage(ctx context.Context, incoming *models.IncomingMessage) (ack bool, deadLetterReason string) {
 	eventName := incoming.EventName
 	eventData := incoming.EventData
 
 	if eventData == nil {
-		c.broker.Ack(ctx, stream, group, messageID)
-		return
+		return true, ""
 	}
 
 	// Accepted events only
 	if !models.AcceptedEventNames[eventName] {
-		c.broker.Ack(ctx, stream, group, messageID)
-		return
+		return true, ""
+	}
+
+	// Export path: produce to staci.calc.data_fetcher and ack (instead of skip)
+	if eventData.ExporterID != "" && c.calcExportProducer != nil {
+		isExportRequest := eventData.ExportXLSX ||
+			eventName == "staci.calc.export_request" ||
+			eventName == "fedi_listener_go_dispatcher" ||
+			eventName == "calc_export"
+		if isExportRequest {
+			if err := c.calcExportProducer.SendDataFetcher(ctx, incoming); err != nil {
+				c.log.Error("send data fetcher failed", "error", err, "exporter_id", eventData.ExporterID)
+				return false, "export_send_failed"
+			}
+			return true, ""
+		}
 	}
 
 	// Conditional skip: different pipeline (spec 5.3)
 	if eventData.ExporterID != "" || eventData.JobID != "" || eventData.IsLiveDashboard || eventData.IsNewsletterReport || eventData.IsExportEngagements {
-		c.broker.Ack(ctx, stream, group, messageID)
-		return
+		return true, ""
 	}
 	if eventData.StreamTech != "" && eventData.StreamTech != "REDIS STREAM" {
 		// Optional: handle API path; for main path we ack and skip or handle separately
@@ -128,17 +161,15 @@ func (c *Consumer) processMessage(ctx context.Context, stream, group, messageID 
 	if eventData.RequestTimestamp > 0 {
 		elapsed := time.Now().Unix() - eventData.RequestTimestamp
 		if elapsed > int64(c.cfg.EventTimeout.Seconds()) {
-			c.deadLetter(ctx, stream, group, messageID, incoming, "stale_request")
-			return
+			return false, "stale_request"
 		}
 	}
 
 	// Special handling: fedi_listener_go_dispatcher with export_xlsx and timeout (spec 5.4)
 	const messageDispatcherTimeoutSec = 7200
-	if eventName == "fedi_listener_go_dispatcher" && eventData.ExportXLSX && eventData.RequestTimestamp > 0 {
+	if (eventName == "fedi_listener_go_dispatcher" || eventName == "staci.fedi.dispatcher") && eventData.ExportXLSX && eventData.RequestTimestamp > 0 {
 		if time.Now().Unix()-eventData.RequestTimestamp > messageDispatcherTimeoutSec {
-			c.deadLetter(ctx, stream, group, messageID, incoming, "export_xlsx_timeout")
-			return
+			return false, "export_xlsx_timeout"
 		}
 	}
 
@@ -157,8 +188,7 @@ func (c *Consumer) processMessage(ctx context.Context, stream, group, messageID 
 	err := c.ctrl.Run(runCtx, eventData, c.senderCh)
 	if err != nil {
 		c.log.Error("controller run failed", "event_name", eventName, "routing_key", eventData.RoutingKey, "error", err)
-		c.deadLetter(ctx, stream, group, messageID, incoming, "controller_error")
-		return
+		return false, "controller_error"
 	}
 
 	// Completion marker for stream_tech API so frontend knows all widgets are done
@@ -174,7 +204,7 @@ func (c *Consumer) processMessage(ctx context.Context, stream, group, messageID 
 		}
 	}
 
-	c.broker.Ack(ctx, stream, group, messageID)
+	return true, ""
 }
 
 func (c *Consumer) deadLetter(ctx context.Context, stream, group, messageID string, incoming *models.IncomingMessage, reason string) {

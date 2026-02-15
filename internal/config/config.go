@@ -33,6 +33,13 @@ type Config struct {
 	OverrideOutput      bool
 	OverrideRoutingKey  string
 
+	// Kafka (Staci canonical topics; when set, used for input and output instead of Redis streams)
+	KafkaBrokers                 string
+	KafkaTopicDispatcherRequests  string
+	KafkaTopicDispatcherOutput    string
+	KafkaTopicCalcDataFetcher     string
+	KafkaConsumerGroupDispatcher  string
+
 	// MongoDB
 	MongoDBURI      string
 	MongoDBHost     string
@@ -130,6 +137,12 @@ func Load() (*Config, error) {
 	c.OverrideOutput = parseBool(os.Getenv("APP_GO_DISPATCHER_OVERRIDE"))
 	c.OverrideRoutingKey = os.Getenv("APP_GO_DISPATCHER_OVERRIDE_ROUTING_KEY")
 
+	c.KafkaBrokers = os.Getenv("KAFKA_BOOTSTRAP_SERVERS")
+	c.KafkaTopicDispatcherRequests = getEnv("STACI_TOPIC_DISPATCHER_REQUESTS", "staci.dispatcher.requests")
+	c.KafkaTopicDispatcherOutput = getEnv("STACI_TOPIC_DISPATCHER_OUTPUT", "staci.dispatcher.output")
+	c.KafkaTopicCalcDataFetcher = getEnv("STACI_TOPIC_CALC_DATA_FETCHER", "staci.calc.data_fetcher")
+	c.KafkaConsumerGroupDispatcher = getEnv("STACI_CONSUMER_GROUP_DISPATCHER", "staci-dispatcher")
+
 	// MongoDB
 	c.MongoDBURI = os.Getenv("APP_MONGODB_URI")
 	c.MongoDBHost = getEnv("APP_MONGODB_HOST", "localhost")
@@ -202,8 +215,21 @@ func Load() (*Config, error) {
 }
 
 func (c *Config) validate() error {
+	useKafka := c.KafkaBrokers != ""
+	if useKafka {
+		if c.KafkaTopicDispatcherRequests == "" {
+			return fmt.Errorf("STACI_TOPIC_DISPATCHER_REQUESTS is required when using Kafka")
+		}
+		if c.KafkaTopicDispatcherOutput == "" {
+			return fmt.Errorf("STACI_TOPIC_DISPATCHER_OUTPUT is required when using Kafka")
+		}
+		if c.KafkaConsumerGroupDispatcher == "" {
+			return fmt.Errorf("STACI_CONSUMER_GROUP_DISPATCHER is required when using Kafka")
+		}
+		return nil
+	}
 	if c.DispatcherInputStream == "" {
-		return fmt.Errorf("APP_DISPATCHER_INPUT_STREAM is required")
+		return fmt.Errorf("APP_DISPATCHER_INPUT_STREAM is required (or set KAFKA_BOOTSTRAP_SERVERS)")
 	}
 	if c.DispatcherConsumerGroup == "" {
 		return fmt.Errorf("APP_DISPATCHER_CONSUMER_GROUP is required")
@@ -218,6 +244,11 @@ func (c *Config) validate() error {
 		return fmt.Errorf("APP_DISPATCHER_REJECTED_STREAM is required")
 	}
 	return nil
+}
+
+// UseKafka returns true when Kafka is configured as the broker for dispatcher input/output.
+func (c *Config) UseKafka() bool {
+	return c.KafkaBrokers != ""
 }
 
 // RedisAddr returns host:port for the main Redis broker.

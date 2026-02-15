@@ -34,6 +34,10 @@ var AcceptedEventNames = map[string]bool{
 	"calc_export":                                        true,
 	"unified_json":                                       true,
 	"qdtranscriber_go_dispatcher":                        true,
+	// Canonical Staci event names (Kafka)
+	"staci.fedi.dispatcher":      true,
+	"staci.calc.export_request":  true,
+	"staci.transcriber.dispatcher": true,
 }
 
 // EngagementsPageNameMapping maps eventData.page_name for engagements_go_dispatcher (spec 6.3).
@@ -77,6 +81,12 @@ func EventToPageEnrichment(eventName string, eventData *EventData) {
 		eventData.PageName = "ResearchChatsPage"
 	case "chats_interactions":
 		eventData.PageName = "ResearchChatsInteractionsPage"
+	case "staci.fedi.dispatcher":
+		// Same as fedi_listener_go_dispatcher; page_name typically in eventData
+	case "staci.calc.export_request":
+		// Same as calc_export; page_name in eventData
+	case "staci.transcriber.dispatcher":
+		// Same as qdtranscriber_go_dispatcher
 	case "fedi_private_data":
 		eventData.PageName = "ResearchSingleDataSourceInsightsPage"
 		eventData.DataSourceName = "Fediprivate"

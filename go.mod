@@ -4,6 +4,7 @@ go 1.22
 
 require (
 	github.com/redis/go-redis/v9 v9.7.0
+	github.com/segmentio/kafka-go v0.4.47
 	go.mongodb.org/mongo-driver v1.17.1
 	github.com/minio/minio-go/v7 v7.0.69
 	go.opentelemetry.io/otel v1.32.0
